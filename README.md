@@ -152,4 +152,9 @@ Safe:
  
 我们首先将文本分别输入三个检测器，得到每个检测器预测该文本为有害文本的概率p1、p2、p3，然后各个概率乘以一个可学习的参数α1、α2、α3，再将他们的结果相加起来，如果大于0.5，则该文本被认定为有害文本，否则认定为无害文本。
 ![image](https://github.com/user-attachments/assets/018dcd2b-4160-4dda-be6f-f8f68c1e5909)
+
+如果需要使用该数据集，请引用：
+<pre> ```bibtex @dataset{luo2025zhatebench, author = {Luo, Yi}, title = {ZHateBench: A Comprehensive Chinese Offensive Language Dataset with Harmful–Safe Pairs}, year = {2025}, publisher = {Zenodo}, doi = {10.5281/zenodo.16812052}, url = {https://doi.org/10.5281/zenodo.16812052} } ``` </pre>
+或者
+Luo, Y. (2025). ZHateBench: A Comprehensive Chinese Offensive Language Dataset with Harmful–Safe Pairs [Data set]. Zenodo. https://doi.org/10.5281/zenodo.16812052
 ﻿﻿﻿
