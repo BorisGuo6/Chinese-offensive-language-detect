@@ -154,7 +154,16 @@ Safe:
 ![image](https://github.com/user-attachments/assets/018dcd2b-4160-4dda-be6f-f8f68c1e5909)
 
 如果需要使用该数据集，请引用：
-```bibtex @dataset{luo2025zhatebench, author = {Luo, Yi}, title = {ZHateBench: A Comprehensive Chinese Offensive Language Dataset with Harmful–Safe Pairs}, year = {2025}, publisher = {Zenodo}, doi = {10.5281/zenodo.16812052}, url = {https://doi.org/10.5281/zenodo.16812052} } ```
+```bibtex 
+@dataset{luo2025zhatebench,
+  author       = {Luo, Yi},
+  title        = {ZHateBench: A Comprehensive Chinese Offensive Language Dataset with Harmful–Safe Pairs},
+  year         = 2025,
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.16812052},
+  url          = {https://doi.org/10.5281/zenodo.16812052}
+}
+```
 
 Or in plain text:
 Luo, Y. (2025). ZHateBench: A Comprehensive Chinese Offensive Language Dataset with Harmful–Safe Pairs [Data set]. Zenodo. https://doi.org/10.5281/zenodo.16812052
