@@ -1,0 +1,11 @@
+accelerate>=1.13
+bitsandbytes>=0.49
+datasets>=4.8
+huggingface-hub>=0.29
+peft>=0.18
+pyyaml>=6.0
+scikit-learn>=1.7
+torch>=2.7
+transformers>=4.57.1
+trl>=0.29
+tqdm>=4.67

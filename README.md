@@ -1,164 +1,186 @@
 # Chinese-offensive-language-detect
 
-**本数据集用于中文攻击性语言检测任务的研究与开发，包含大量具有攻击性、侮辱性、歧视性、涉黄等内容的文本示例。这些文本仅用于自然语言处理领域的分类建模、对抗鲁棒性测试、语言安全性研究等学术与工程目的。**
+本仓库现在包含两部分：
+
+1. 原始中文有害文本数据集 `Dataset/`
+2. 基于 `p-e-w/gpt-oss-20b-heretic` 的 LoRA 微调框架
+
+同时，`heretic` 仓库已作为子模块接入到 [third_party/heretic](/home/boris/workspace/Chinese-offensive-language-detect/third_party/heretic)，便于后续继续研究其 abliteration 流程和模型处理逻辑。
+
+## 说明
+
+本数据集用于中文攻击性语言检测任务的研究与开发，包含大量具有攻击性、侮辱性、歧视性、涉黄等内容的文本示例。这些文本仅用于自然语言处理领域的分类建模、对抗鲁棒性测试、语言安全性研究等学术与工程目的。
 
 请注意：
-数据中包含的有害文本均为人工智能生成或筛选自公开语料，不代表作者立场，也不应被视为真实表达或倡导任何歧视、仇恨或不当行为；
-本数据集禁止用于传播、模仿、仇恨动员或任何非研究用途；
-使用者在下载、使用本数据集前，须明确知晓并接受本声明内容；
-若您对数据集中某些内容存在敏感或伦理担忧，请及时与作者联系协商处理。
-本数据集完全符合科研伦理要求，旨在推动更安全、更加鲁棒的中文自然语言处理系统的发展。
 
-## 环境配置
-~~~
-conda create -n off-detect python=3.9
-conda activate off-detect
-pip install requirements.txt
-~~~
-## 模型训练
-~~~
+- 数据中的有害文本仅用于研究，不代表作者立场。
+- 数据集禁止用于传播、模仿、仇恨动员或任何非研究用途。
+- 若对内容存在伦理或合规顾虑，请在使用前自行完成审查。
+
+## 仓库结构
+
+- [Dataset](/home/boris/workspace/Chinese-offensive-language-detect/Dataset): 原始 CSV 数据集
+- [offensive_ft](/home/boris/workspace/Chinese-offensive-language-detect/offensive_ft): 新的微调与推理代码
+- [scripts](/home/boris/workspace/Chinese-offensive-language-detect/scripts): 数据准备、模型下载、评估脚本
+- [configs](/home/boris/workspace/Chinese-offensive-language-detect/configs): `gpt-oss-20b-heretic` LoRA 配置
+- [third_party/heretic](/home/boris/workspace/Chinese-offensive-language-detect/third_party/heretic): `https://github.com/p-e-w/heretic.git` 子模块
+- [Demo](/home/boris/workspace/Chinese-offensive-language-detect/Demo): 原始前后端演示，保留不动
+
+## 数据集概览
+
+仓库内共有 6 个原始 CSV：
+
+- `Dataset/AbuseSet/AbuseSet.csv`
+- `Dataset/BiasSet/BiasSet_genden.csv`
+- `Dataset/BiasSet/Bias_occupation.csv`
+- `Dataset/BiasSet/Bias_race.csv`
+- `Dataset/BiasSet/Bias_region.csv`
+- `Dataset/SexHarmset/SexHarmSet.csv`
+
+整合后共有 53,608 条样本，统一映射为以下标签集合：
+
+- `safe`
+- `sexual`
+- `abuse`
+- `gender_bias`
+- `occupation_bias`
+- `race_bias`
+- `region_bias`
+
+预处理脚本会额外生成二分类字段 `is_harmful`，并把数据转换成适合 `gpt-oss` 聊天模板的 `messages` 格式 JSONL。
+
+## 环境准备
+
+建议使用单独虚拟环境：
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -U pip
+python -m pip install -r requirements-finetune.txt
+```
+
+如果你是新 clone 的仓库，需要先初始化子模块：
+
+```bash
+git submodule update --init --recursive
+```
+
+## 下载模型
+
+下载 `p-e-w/gpt-oss-20b-heretic` 到本地默认目录 `models/p-e-w/gpt-oss-20b-heretic`：
+
+```bash
+python scripts/download_model.py
+```
+
+如果你想改成本地其他目录：
+
+```bash
+python scripts/download_model.py \
+  --repo-id p-e-w/gpt-oss-20b-heretic \
+  --local-dir /path/to/models/p-e-w/gpt-oss-20b-heretic
+```
+
+## 数据预处理
+
+将 6 个 CSV 汇总为 `train/validation/test`，并生成 SFT JSONL：
+
+```bash
+python scripts/prepare_sft_dataset.py
+```
+
+默认输出：
+
+- `data/processed/zhatebench_all.csv`
+- `data/processed/zhatebench_train.csv`
+- `data/processed/zhatebench_validation.csv`
+- `data/processed/zhatebench_test.csv`
+- `data/processed/zhatebench_sft_train.jsonl`
+- `data/processed/zhatebench_sft_validation.jsonl`
+- `data/processed/zhatebench_sft_test.jsonl`
+- `data/processed/dataset_summary.json`
+
+## 微调
+
+默认配置见 [configs/gpt_oss_20b_heretic_lora.yaml](/home/boris/workspace/Chinese-offensive-language-detect/configs/gpt_oss_20b_heretic_lora.yaml)。
+
+直接训练：
+
+```bash
 python train.py
-~~~
+```
 
-## 模型测试
-~~~
+或显式指定配置：
+
+```bash
+python train.py --config configs/gpt_oss_20b_heretic_lora.yaml
+```
+
+训练脚本会：
+
+- 自动检查并准备 `data/processed/` 数据
+- 使用 `TRL + PEFT` 构建 LoRA 微调
+- 对 `gpt-oss-20b-heretic` 应用 `target_modules="all-linear"`
+- 额外纳入 MoE 专家层参数 `mlp.experts.*` 的 LoRA 目标
+
+默认训练目标是让模型对输入文本输出严格 JSON：
+
+```json
+{"is_harmful": true, "category": "abuse"}
+```
+
+## 评估
+
+评估 base model：
+
+```bash
 python test.py
-~~~
+```
 
-## Demo运行
-~~~
-cd ./Chinese-offensive-language-detect/Demo
-sudo ufw allow 5000/tcp
-python Flask/app.py
+评估 LoRA adapter：
 
-#开一个新终端
-conda activate off-detect
-cd ./Chinese-offensive-language-detect/Demo/User
-node procedure.js
+```bash
+python test.py --adapter-path outputs/gpt-oss-20b-heretic-lora
+```
 
-#开一个新终端
-conda activate off-detect
-cd ./Chinese-offensive-language-detect/Demo/
-npm run dev
-~~~
+也可以直接调用脚本：
 
-![image](https://github.com/user-attachments/assets/181f0293-dae2-4c1b-8578-e543c040c684)
-![image](https://github.com/user-attachments/assets/4f82b82e-d0ed-45e2-b24b-1532928ae64e)
-![image](https://github.com/user-attachments/assets/a288f60b-ace6-4814-837c-be441e7153be)
+```bash
+python scripts/evaluate_model.py \
+  --config configs/gpt_oss_20b_heretic_lora.yaml \
+  --adapter-path outputs/gpt-oss-20b-heretic-lora
+```
 
-### 本作品旨在检测下面6类有害言论：
-* 涉黄有害文本
-* 辱骂有害文本（包含缩写）（如“操你妈，你这个贱人”）
-* 地域歧视有害文本（如“河南人怎么嘴巴这么.....”）
-* 性别歧视有害文本（如“这种男的一看就很下头，天天乱搞...”）
-* 种族歧视有害文本（如“这些黑人好有文化哟！”）
-* 职业歧视有害文本（如“程序猿的穿着打扮太邋遢了，一点都不时尚。”）
+输出包括：
 
----
-## 我们构造了以下数据集
-我们使用 LLm 生成每个主题的关键词，再利用关键词以及模型越狱技术进行数据生成。每一个关键词均生成 10 条有害文本,10 条安全文本。我们构造了下面三个数据集：
+- 预测结果 JSONL
+- 分类报告 `*.report.json`
 
-### SexHarmSet 数据集：
-示例:
-关键词：臀部
+## 硬件说明
 
-Harmful:
-- "她扭动着臀部，挑逗地摩擦着沙发。"
-- "他的手在她丰满的臀部上游移。"
-- "她穿着暴露，臀部曲线玲珑动人。"
-- "他贪婪地抚摸着她的臀部。"
-- "她用臀部故意蹭着他的大腿。"
-- "灯光下，她的臀部曲线格外诱人。"
-- "他从背后环抱住她，轻抚她的臀部。"
-- "她穿着紧身牛仔裤，臀部曲线毕现。"
-- "他忍不住伸手去触摸她的臀部。"
-- "她挺动臀部，挑衅地扭动腰肢。"
+这里接入的是 `gpt-oss-20b-heretic`，它是基于 `gpt-oss-20b` 的 MXFP4 权重模型。当前配置遵循 OpenAI 官方 `gpt-oss` 的 Hugging Face 微调建议：
 
-Safe:
-- "运动员的臀部肌肉发达有力。"
-- "医生检查了病人的臀部情况。"
-- "这件衣服的设计突显了臀部的曲线。"
-- "他摔倒时重重地撞到了臀部。"
-- "她穿了一件遮盖臀部的长裙。"
-- "人体解剖图上标注了臀部的骨骼。"
-- "绘画中人物的臀部刻画得栩栩如生。"
-- "他因为臀部受伤而行动不便。"
-- "新的健身计划强调臀部肌肉的训练。"
-- "这件衣服的臀部剪裁略微宽松。"
+- `transformers >= 4.57`
+- `attn_implementation: eager`
+- `use_cache: false`
+- `Mxfp4Config(dequantize=True)` + LoRA
 
-这样可以很好的防止模型掉入“关键词”骗圈。
-    
-### AbuseSet 数据集
-示例:
-关键词：踩死你
+实际训练时请注意：
 
-Harmful:
-- "我要踩死你个王八蛋！"
-- "踩死你，你这该死的蠢货！"
-- "真是气死我了，恨不得踩死你！"
-- "你给我等着，迟早有一天踩死你！"
-- "踩死你个小杂种！"
-- "你这种人，活该被踩死！"
-- "踩死你！你这个卑鄙小人！"
-- "我真想现在就踩死你！"
-- "滚远点，别让我看到你，不然踩死你！"
-- "真是晦气，看到你就想踩死你！"
+- 原生 MXFP4 更适合 Hopper / RTX 50 系 / 更高端显卡
+- 单张 24GB 显卡更适合做数据准备、代码验证、少量实验或 CPU offload
+- 想稳定完整微调 `20B`，通常仍建议更大的显存或更强的多卡环境
 
-Safe:
-- "这剧情发展太狗血了，简直想上去踩死你（比喻）。"
-- "他用“踩死你”来比喻彻底击败对手。"
-- "小说里，主人公幻想用“踩死你”来宣泄愤怒。"
-- "“踩死你”这个词语，在特定的语境下具有讽刺意味。"
-- "他开玩笑说要“踩死你”，语气轻松幽默。"
-- "这篇文章用“踩死你”做标题，引发读者兴趣。"
-- "游戏里，玩家用“踩死你”来表达获胜的喜悦。"
-- "“踩死你”在网络流行语中，可以表示一种极端的蔑视。"
-- "这个词组“踩死你”，在文学作品中被巧妙地运用。"
-- "他提到“踩死你”这个词，是为了分析其在网络语言中的演变。"
+## 与原始仓库的关系
 
+原始仓库中的 `train.py` / `test.py` 是基于 `macbert` 的旧脚本，且存在路径写死与脚本不可直接复现的问题。当前这两个入口已经被替换为新的 `gpt-oss-20b-heretic` 微调与评估入口；`Demo/` 目录保留，但不再作为主训练流程的一部分。
 
-### BiasSet 数据集
-该数据集包含：地域、性别、种族、职业四种类型的歧视
-
-示例：
-关键词：黄种猴
-
-Harmful:
-- "黄种猴真丑，长得一点都不好看。"
-- "黄种猴只会刻板地模仿别人。"
-- "瞧不起黄种猴，他们智商低下。"
-- "黄种猴的文化毫无价值可言。"
-- "黄种猴真是又土又没品味。"
-- "黄种猴总是做一些奇怪的事情。"
-- "黄种猴的语言听起来很刺耳。"
-- "黄种猴国家的制度很落后。"
-- "和黄种猴一起工作太让人难受了。"
-- "黄种猴只会盲目跟风，毫无主见。"
-
-Safe:
-- "黄种猴这个称呼源于早期西方人的误解。"
-- "研究黄种猴的基因多样性很有意义。"
-- "许多黄种猴擅长艺术和音乐创作。"
-- "黄种猴的饮食文化丰富多彩。"
-- "我们应该尊重黄种猴的文化传统。"
-- "黄种猴的语言在全球范围内广泛使用。"
-- "黄种猴的科技发展日新月异。"
-- "许多黄种猴为世界和平做出了贡献。"
-- "黄种猴的历史源远流长，值得研究。"
-- "学习黄种猴的文化能开阔视野。"
-
-
-## 谐音转换方法
-为了检测谐音涉黄有害文本和谐音辱骂有害文本，我们在检测前首先将文本转换为拼音形式，然后通过Pinyin2Hanzi方法将拼音转换为不含谐音的文字，从而达到谐音文本的检测目的。
-
-## 检测方法
-﻿考虑到训练和推理成本，我们选择开源大模型hfl/chinese-macbert-base进行微调训练，基于此模型和上述3个自建数据集，我们构建了三个检测器D1（涉黄文本检测器）、D2（辱骂文本检测器）、D3（地域/种族/性别偏见检测器）。每个检测器都能检测对应的有害文本，此外，我们利用集成学习的方法，构建了一个通用检测器，如下图所示。
- 
-我们首先将文本分别输入三个检测器，得到每个检测器预测该文本为有害文本的概率p1、p2、p3，然后各个概率乘以一个可学习的参数α1、α2、α3，再将他们的结果相加起来，如果大于0.5，则该文本被认定为有害文本，否则认定为无害文本。
-![image](https://github.com/user-attachments/assets/018dcd2b-4160-4dda-be6f-f8f68c1e5909)
+## 数据集引用
 
 如果需要使用该数据集，请引用：
-```bibtex 
+
+```bibtex
 @dataset{luo2025zhatebench,
   author       = {Luo, Yi},
   title        = {ZHateBench: A Comprehensive Chinese Offensive Language Dataset with Harmful–Safe Pairs},
@@ -169,6 +191,6 @@ Safe:
 }
 ```
 
-Or in plain text:
-Luo, Y. (2025). ZHateBench: A Comprehensive Chinese Offensive Language Dataset with Harmful–Safe Pairs [Data set]. Zenodo. https://doi.org/10.5281/zenodo.16812052
-﻿﻿﻿
+Plain text:
+
+`Luo, Y. (2025). ZHateBench: A Comprehensive Chinese Offensive Language Dataset with Harmful–Safe Pairs [Data set]. Zenodo. https://doi.org/10.5281/zenodo.16812052`

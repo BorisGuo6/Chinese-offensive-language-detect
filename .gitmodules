@@ -1,3 +1,7 @@
+[submodule "Demo/Pinyin2Hanzi"]
+	path = Demo/Pinyin2Hanzi
+	url = https://github.com/letiantian/Pinyin2Hanzi.git
+
 [submodule "third_party/heretic"]
 	path = third_party/heretic
 	url = https://github.com/p-e-w/heretic.git
